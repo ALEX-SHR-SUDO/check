@@ -1,15 +1,15 @@
 {
-  "name": "solana-token-api",
+  "name": "check",
   "version": "1.0.0",
   "main": "server.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "@solana/web3.js": "^1.77.0",
-    "@solana/spl-token": "^0.3.9"
+    "@solana/web3.js": "^1.95.3",
+    "@solana/spl-token": "^0.4.3",
+    "dotenv": "^16.4.5"
   }
 }
