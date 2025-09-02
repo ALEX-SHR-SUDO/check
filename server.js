@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Проверяем PRIVATE_KEY
+// 🔹 Проверяем PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
   console.error("❌ Error: PRIVATE_KEY не задан в Environment Variables!");
   process.exit(1);
@@ -23,21 +23,21 @@ try {
   const secretKey = Uint8Array.from(JSON.parse(process.env.PRIVATE_KEY));
   payer = Keypair.fromSecretKey(secretKey);
   console.log("✅ PRIVATE_KEY загружен успешно!");
-  console.log("Payer public key:", payer.publicKey.toBase58());
+  console.log("payer public key:", payer.publicKey.toBase58());
 } catch (err) {
   console.error("❌ Ошибка при разборе PRIVATE_KEY:", err.message);
   process.exit(1);
 }
 
-// Подключение к Devnet
+// 🔹 Подключение к Devnet
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-// Тестовый маршрут
+// 🔹 Тестовый маршрут
 app.get("/", (req, res) => {
   res.send("✅ Solana Token API is running!");
 });
 
-// Эндпоинт создания токена
+// 🔹 Эндпоинт создания токена
 app.post("/create-token", async (req, res) => {
   try {
     if (!payer) {
@@ -48,7 +48,7 @@ app.post("/create-token", async (req, res) => {
     const { decimals = 9, supply = 1000 } = req.body;
     console.log("Получен запрос:", { decimals, supply });
 
-    // 1️⃣ Создаем новый mint
+    // 1️⃣ Создаём новый mint
     const mint = await createMint(
       connection,
       payer,
@@ -60,17 +60,23 @@ app.post("/create-token", async (req, res) => {
 
     if (!mint) {
       console.error("❌ createMint вернул undefined!");
-      return res.status(500).json({ success: false, error: "createMint failed" });
+      return res.status(500).json({ success: false, error: "mint undefined" });
     }
     console.log("Mint создан:", mint.toBase58());
 
-    // 2️⃣ Создаем аккаунт владельца
+    // 2️⃣ Создаём аккаунт владельца
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer,
       mint,
       payer.publicKey
     );
+
+    if (!tokenAccount || !tokenAccount.address) {
+      console.error("❌ tokenAccount undefined!");
+      return res.status(500).json({ success: false, error: "tokenAccount undefined" });
+    }
+
     console.log("Token account:", tokenAccount.address.toBase58());
 
     // 3️⃣ Выпускаем токены
@@ -82,6 +88,7 @@ app.post("/create-token", async (req, res) => {
       payer,
       supply
     );
+
     console.log("Токены выпущены, tx:", txSig);
 
     // 4️⃣ Возвращаем результат
@@ -101,6 +108,7 @@ app.post("/create-token", async (req, res) => {
 // 🔹 Запуск сервера
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
 
 
 
