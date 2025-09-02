@@ -47,9 +47,9 @@ app.post("/create-token", async (req, res) => {
     // 1️⃣ Создаём новый mint
     const mint = await createMint(
       connection,
-      payer,           // signer
-      payer.publicKey, // mint authority
-      null,            // freeze authority
+      payer,
+      payer.publicKey,
+      null,
       decimals,
       TOKEN_PROGRAM_ID
     );
@@ -70,15 +70,14 @@ app.post("/create-token", async (req, res) => {
     }
 
     console.log("Token account:", destination.toBase58());
-    console.log("Payer:", payer.publicKey.toBase58());
 
     // 3️⃣ Выпускаем токены
     const txSig = await mintTo(
       connection,
-      payer,       // signer (Keypair)
-      mint,        // mint PublicKey
-      destination, // destination PublicKey
-      payer,       // authority (Keypair)
+      payer,
+      mint,
+      destination,
+      payer,
       supply
     );
     console.log("Токены выпущены, tx:", txSig);
