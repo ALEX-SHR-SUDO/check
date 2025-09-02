@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔹 Проверяем PRIVATE_KEY
+// 🔹 Проверка PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
   console.error("❌ Error: PRIVATE_KEY не задан в Environment Variables!");
   process.exit(1);
@@ -41,14 +41,13 @@ app.get("/", (req, res) => {
 app.post("/create-token", async (req, res) => {
   try {
     if (!payer) {
-      console.error("❌ payer undefined! Проверьте PRIVATE_KEY.");
       return res.status(500).json({ success: false, error: "payer undefined" });
     }
 
     const { decimals = 9, supply = 1000 } = req.body;
     console.log("Получен запрос:", { decimals, supply });
 
-    // 1️⃣ Создаём новый mint
+    // 1️⃣ Создаем новый mint
     const mint = await createMint(
       connection,
       payer,
@@ -59,12 +58,10 @@ app.post("/create-token", async (req, res) => {
     );
 
     if (!mint) {
-      console.error("❌ createMint вернул undefined!");
       return res.status(500).json({ success: false, error: "mint undefined" });
     }
-    console.log("Mint создан:", mint.toBase58());
 
-    // 2️⃣ Создаём аккаунт владельца
+    // 2️⃣ Создаем аккаунт владельца
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer,
@@ -73,11 +70,8 @@ app.post("/create-token", async (req, res) => {
     );
 
     if (!tokenAccount || !tokenAccount.address) {
-      console.error("❌ tokenAccount undefined!");
       return res.status(500).json({ success: false, error: "tokenAccount undefined" });
     }
-
-    console.log("Token account:", tokenAccount.address.toBase58());
 
     // 3️⃣ Выпускаем токены
     const txSig = await mintTo(
@@ -88,8 +82,6 @@ app.post("/create-token", async (req, res) => {
       payer,
       supply
     );
-
-    console.log("Токены выпущены, tx:", txSig);
 
     // 4️⃣ Возвращаем результат
     res.json({
@@ -108,8 +100,3 @@ app.post("/create-token", async (req, res) => {
 // 🔹 Запуск сервера
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
-
-
-
-
