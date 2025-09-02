@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { Connection, Keypair, clusterApiUrl } = require("@solana/web3.js");
+const { Connection, Keypair, clusterApiUrl, PublicKey } = require("@solana/web3.js");
 const {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -12,15 +12,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔹 Загрузка PRIVATE_KEY
+// 🔹 Проверка PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
-  console.error("❌ PRIVATE_KEY не задан в Environment Variables!");
+  console.error("❌ PRIVATE_KEY не задан!");
   process.exit(1);
 }
 
 let payer;
 try {
-  // Преобразуем строку JSON в массив чисел
   const secretKey = JSON.parse(process.env.PRIVATE_KEY);
   if (!Array.isArray(secretKey)) throw new Error("PRIVATE_KEY должен быть массивом чисел!");
   payer = Keypair.fromSecretKey(Uint8Array.from(secretKey));
@@ -39,7 +38,7 @@ app.get("/", (req, res) => {
   res.send("✅ Solana Token API is running!");
 });
 
-// 🔹 Эндпоинт для создания токена
+// 🔹 Эндпоинт создания токена
 app.post("/create-token", async (req, res) => {
   try {
     const { decimals = 9, supply = 1000 } = req.body;
@@ -63,24 +62,32 @@ app.post("/create-token", async (req, res) => {
       mint,
       payer.publicKey
     );
-    console.log("Token account:", tokenAccount.address.toBase58());
+
+    const destination = tokenAccount.address || tokenAccount.publicKey;
+
+    if (!destination) {
+      return res.status(500).json({ success: false, error: "tokenAccount address undefined" });
+    }
+
+    console.log("Token account:", destination.toBase58());
 
     // 3️⃣ Выпускаем токены
     const txSig = await mintTo(
       connection,
-      payer,                  // signer
-      mint,                   // mint
-      tokenAccount.address,   // destination
-      payer,                  // authority
-      supply                  // количество
+      payer,       // signer
+      mint,        // mint
+      destination, // destination PublicKey
+      payer,       // authority
+      supply
     );
+
     console.log("Токены выпущены, tx:", txSig);
 
-    // 4️⃣ Отправляем результат на фронтенд
+    // 4️⃣ Отправляем результат
     res.json({
       success: true,
       mintAddress: mint.toBase58(),
-      ownerAccount: tokenAccount.address.toBase58(),
+      ownerAccount: destination.toBase58(),
       txSignature: txSig
     });
 
