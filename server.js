@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { Connection, Keypair, clusterApiUrl } = require("@solana/web3.js");
+const { Connection, Keypair, clusterApiUrl, PublicKey } = require("@solana/web3.js");
 const {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔹 Проверка PRIVATE_KEY
+// 🔹 Проверка и загрузка PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
   console.error("❌ Error: PRIVATE_KEY не задан в Environment Variables!");
   process.exit(1);
@@ -20,8 +20,9 @@ if (!process.env.PRIVATE_KEY) {
 
 let payer;
 try {
-  const secretKey = Uint8Array.from(JSON.parse(process.env.PRIVATE_KEY));
-  payer = Keypair.fromSecretKey(secretKey);
+  const secretKey = JSON.parse(process.env.PRIVATE_KEY);
+  if (!Array.isArray(secretKey)) throw new Error("PRIVATE_KEY должен быть массивом чисел!");
+  payer = Keypair.fromSecretKey(Uint8Array.from(secretKey));
   console.log("✅ PRIVATE_KEY загружен успешно!");
   console.log("payer public key:", payer.publicKey.toBase58());
 } catch (err) {
@@ -40,9 +41,7 @@ app.get("/", (req, res) => {
 // 🔹 Эндпоинт создания токена
 app.post("/create-token", async (req, res) => {
   try {
-    if (!payer) {
-      return res.status(500).json({ success: false, error: "payer undefined" });
-    }
+    if (!payer) return res.status(500).json({ success: false, error: "payer undefined" });
 
     const { decimals = 9, supply = 1000 } = req.body;
     console.log("Получен запрос:", { decimals, supply });
@@ -57,11 +56,10 @@ app.post("/create-token", async (req, res) => {
       TOKEN_PROGRAM_ID
     );
 
-    if (!mint) {
-      return res.status(500).json({ success: false, error: "mint undefined" });
-    }
+    if (!mint) return res.status(500).json({ success: false, error: "mint undefined" });
+    console.log("Mint создан:", mint.toBase58());
 
-    // 2️⃣ Создаем аккаунт владельца
+    // 2️⃣ Создаем аккаунт владельца токена
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer,
@@ -69,19 +67,21 @@ app.post("/create-token", async (req, res) => {
       payer.publicKey
     );
 
-    if (!tokenAccount || !tokenAccount.address) {
+    if (!tokenAccount || !tokenAccount.address)
       return res.status(500).json({ success: false, error: "tokenAccount undefined" });
-    }
+    console.log("Token account:", tokenAccount.address.toBase58());
 
-    // 3️⃣ Выпускаем токены
+    // 3️⃣ Выпускаем токены на аккаунт
     const txSig = await mintTo(
       connection,
-      payer,
-      mint,
-      tokenAccount.address,
-      payer,
+      payer,                  // signer
+      mint,                   // mint PublicKey
+      tokenAccount.address,   // destination
+      payer,                  // authority
       supply
     );
+
+    console.log("Токены выпущены, tx:", txSig);
 
     // 4️⃣ Возвращаем результат
     res.json({
