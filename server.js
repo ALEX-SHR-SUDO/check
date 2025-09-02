@@ -92,11 +92,10 @@ app.post("/create-token", async (req, res) => {
   }
 });
 
-// Запуск сервера
+// 🔹 Запуск сервера
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 
-// Запуск сервера
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+
