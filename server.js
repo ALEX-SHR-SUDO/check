@@ -12,9 +12,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Проверка PRIVATE_KEY
+// Проверяем PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
-  console.error("❌ Error: PRIVATE_KEY not set in Environment Variables!");
+  console.error("❌ Error: PRIVATE_KEY не задан в Environment Variables!");
   process.exit(1);
 }
 
@@ -22,10 +22,10 @@ let payer;
 try {
   const secretKey = Uint8Array.from(JSON.parse(process.env.PRIVATE_KEY));
   payer = Keypair.fromSecretKey(secretKey);
-  console.log("✅ PRIVATE_KEY loaded successfully!");
+  console.log("✅ PRIVATE_KEY загружен успешно!");
   console.log("Payer public key:", payer.publicKey.toBase58());
 } catch (err) {
-  console.error("❌ Error parsing PRIVATE_KEY:", err.message);
+  console.error("❌ Ошибка при разборе PRIVATE_KEY:", err.message);
   process.exit(1);
 }
 
@@ -40,10 +40,15 @@ app.get("/", (req, res) => {
 // Эндпоинт создания токена
 app.post("/create-token", async (req, res) => {
   try {
-    const { decimals = 9, supply = 1000 } = req.body;
-    console.log("Received request:", { decimals, supply });
+    if (!payer) {
+      console.error("❌ payer undefined! Проверьте PRIVATE_KEY.");
+      return res.status(500).json({ success: false, error: "payer undefined" });
+    }
 
-    // 1️⃣ Создаём новый mint
+    const { decimals = 9, supply = 1000 } = req.body;
+    console.log("Получен запрос:", { decimals, supply });
+
+    // 1️⃣ Создаем новый mint
     const mint = await createMint(
       connection,
       payer,
@@ -54,12 +59,12 @@ app.post("/create-token", async (req, res) => {
     );
 
     if (!mint) {
-      console.error("❌ createMint returned undefined!");
+      console.error("❌ createMint вернул undefined!");
       return res.status(500).json({ success: false, error: "createMint failed" });
     }
-    console.log("Mint created:", mint.toBase58());
+    console.log("Mint создан:", mint.toBase58());
 
-    // 2️⃣ Создаём аккаунт владельца
+    // 2️⃣ Создаем аккаунт владельца
     const tokenAccount = await getOrCreateAssociatedTokenAccount(
       connection,
       payer,
@@ -77,7 +82,7 @@ app.post("/create-token", async (req, res) => {
       payer,
       supply
     );
-    console.log("Tokens minted, tx:", txSig);
+    console.log("Токены выпущены, tx:", txSig);
 
     // 4️⃣ Возвращаем результат
     res.json({
@@ -86,8 +91,9 @@ app.post("/create-token", async (req, res) => {
       ownerAccount: tokenAccount.address.toBase58(),
       txSignature: txSig
     });
+
   } catch (err) {
-    console.error("❌ Error in /create-token:", err);
+    console.error("❌ Ошибка в /create-token:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
