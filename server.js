@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { Connection, Keypair, clusterApiUrl, PublicKey } = require("@solana/web3.js");
+const { Connection, Keypair, clusterApiUrl } = require("@solana/web3.js");
 const {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -14,7 +14,7 @@ app.use(express.json());
 
 // 🔹 Проверка PRIVATE_KEY
 if (!process.env.PRIVATE_KEY) {
-  console.error("❌ PRIVATE_KEY не задан!");
+  console.error("❌ PRIVATE_KEY не задан в Environment Variables!");
   process.exit(1);
 }
 
@@ -26,7 +26,7 @@ try {
   console.log("✅ PRIVATE_KEY загружен");
   console.log("payer public key:", payer.publicKey.toBase58());
 } catch (err) {
-  console.error("❌ Ошибка при разборе PRIVATE_KEY:", err.message);
+  console.error("❌ Ошибка разбора PRIVATE_KEY:", err.message);
   process.exit(1);
 }
 
@@ -38,7 +38,7 @@ app.get("/", (req, res) => {
   res.send("✅ Solana Token API is running!");
 });
 
-// 🔹 Эндпоинт создания токена
+// 🔹 Эндпоинт для создания токена
 app.post("/create-token", async (req, res) => {
   try {
     const { decimals = 9, supply = 1000 } = req.body;
@@ -47,9 +47,9 @@ app.post("/create-token", async (req, res) => {
     // 1️⃣ Создаём новый mint
     const mint = await createMint(
       connection,
-      payer,            // signer
-      payer.publicKey,  // mint authority
-      null,             // freeze authority
+      payer,           // signer
+      payer.publicKey, // mint authority
+      null,            // freeze authority
       decimals,
       TOKEN_PROGRAM_ID
     );
@@ -63,27 +63,27 @@ app.post("/create-token", async (req, res) => {
       payer.publicKey
     );
 
+    // 🔹 Используем publicKey, если address undefined
     const destination = tokenAccount.address || tokenAccount.publicKey;
-
     if (!destination) {
-      return res.status(500).json({ success: false, error: "tokenAccount address undefined" });
+      return res.status(500).json({ success: false, error: "tokenAccount destination undefined" });
     }
 
     console.log("Token account:", destination.toBase58());
+    console.log("Payer:", payer.publicKey.toBase58());
 
     // 3️⃣ Выпускаем токены
     const txSig = await mintTo(
       connection,
-      payer,       // signer
-      mint,        // mint
+      payer,       // signer (Keypair)
+      mint,        // mint PublicKey
       destination, // destination PublicKey
-      payer,       // authority
+      payer,       // authority (Keypair)
       supply
     );
-
     console.log("Токены выпущены, tx:", txSig);
 
-    // 4️⃣ Отправляем результат
+    // 4️⃣ Возвращаем результат
     res.json({
       success: true,
       mintAddress: mint.toBase58(),
